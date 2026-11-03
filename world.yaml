@@ -1,0 +1,88 @@
+version: "superwork.world/v1"
+world:
+  name: "Stock Intelligence & Portfolio Orchestrator"
+  mission: "4대 독립 전문 에이전트의 병렬 분석과 엄격한 교차 검증 가드를 통해 결측·왜곡 없는 무결점 포트폴리오 상태를 웹앱에 동기화한다."
+
+entities:
+  ComprehensiveDailyReport:
+    owned_state: true
+    attributes:
+      session_id: string
+      session_date: string
+      session_mode: string         # "morning" | "close"
+      fact_status: string          # "pending" | "completed" | "failed"
+      quant_status: string         # "pending" | "completed" | "failed"
+      audit_status: string         # "pending" | "completed" | "failed"
+      macro_data_sane: string      # "yes" | "no"
+      text_data_aligned: string    # "yes" | "no"
+      contains_raw_url: string     # "yes" | "no"
+
+roles:
+  - FactResearcher        # 실시간 시세, 거래량, 4대 매크로 지표 수집
+  - QuantAnalyst          # 20일선 이격도, RSI, 매집강도 점수 산출
+  - CorporateAuditor      # DART 공시, 기업 운영 및 재무 건전성 감사
+  - ChiefStrategist       # 시장 브리핑 작성, Top 3 선정, 종합 등급 판정
+  - IntegrityInspector    # 기사-수치 교차 검증 및 이상치 기계적 감사
+  - RuntimeCommitter      # 최종 레포트 승인 및 상태 확정 커미터
+
+states:
+  - drafted                # 초기 기동 상태
+  - analyzing              # 3대 에이전트 독립 병렬 분석 중
+  - ready_for_synthesis    # 3대 분석 데이터가 모두 정상 도착한 합류 상태
+  - synthesized            # 종합 전략 및 브리핑 합성 완료
+  - verified               # 수치-기사 일치 및 매크로 검증 완료
+  - under_review           # 사용자 검토 및 최종 승인 대기 상태
+  - committed              # [Terminal] 최종 승인 및 리포트 확정 완료
+  - requires_recheck       # [Failure Gate] 비정상 데이터 감지 시 격리 상태
+
+transitions:
+  start_analysis:
+    from: drafted
+    to: analyzing
+    roles: [FactResearcher]
+
+  submit_parallel_results:
+    from: analyzing
+    to: ready_for_synthesis
+    roles: [FactResearcher, QuantAnalyst, CorporateAuditor]
+    guards:
+      - record.fact_status == "completed"
+      - record.quant_status == "completed"
+      - record.audit_status == "completed"
+
+  synthesize_strategy:
+    from: ready_for_synthesis
+    to: synthesized
+    roles: [ChiefStrategist]
+    guards:
+      - record.contains_raw_url == "no"
+
+  verify_integrity:
+    from: synthesized
+    to: verified
+    roles: [IntegrityInspector]
+    guards:
+      - record.macro_data_sane == "yes"
+      - record.text_data_aligned == "yes"
+
+  flag_discrepancy:
+    from: synthesized
+    to: requires_recheck
+    roles: [IntegrityInspector]
+    guards:
+      - record.text_data_aligned == "no"
+
+  submit_for_review:
+    from: verified
+    to: under_review
+    roles: [IntegrityInspector]
+
+  approve_report:
+    from: under_review
+    to: committed
+    roles: [RuntimeCommitter]
+
+  request_rework:
+    from: under_review
+    to: drafting
+    roles: [RuntimeCommitter]
