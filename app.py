@@ -112,30 +112,33 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 2. 세션 상태 초기화 & 원천 데이터 로드
+# 2. 기본 데이터셋 정의 & 세션 초기화 (결측 방어 적용)
 # ---------------------------------------------------------
+DEFAULT_HOLDINGS = [
+    {"code": "060720", "name": "RFHIC", "sector": "방산/통신", "qty": 450, "avg_price": 28500, "cur_price": 28500, "grade": "S",
+     "roe": "14.2%", "debt": "42.1%", "opYoY": "+38.4%", "targetDisp": "+24.5%", "per": "18.2", "pbr": "1.3", "supply_score": 85, "supply_stage": "🚀 매집완료", "rsi": 62.4, "volRatio": "185.0%", "disparity20": "104.2%",
+     "why": "방산 GaN 전력증폭기 글로벌 수주 확대 및 5G 어드밴스드 투자 사이클 진입에 따른 실적 턴어라운드 본격화."},
+    {"code": "001440", "name": "대한전선", "sector": "전력인프라", "qty": 1200, "avg_price": 14200, "cur_price": 14200, "grade": "A",
+     "roe": "11.5%", "debt": "88.2%", "opYoY": "+25.1%", "targetDisp": "+18.0%", "per": "14.1", "pbr": "1.1", "supply_score": 75, "supply_stage": "⏳ 집중매집", "rsi": 58.1, "volRatio": "142.0%", "disparity20": "102.5%",
+     "why": "북미 노후 송전망 교체 및 해저케이블 1공장 가동에 따른 수주 잔고 최고치 경신 모멘텀 지속."},
+    {"code": "005420", "name": "코스모화학", "sector": "2차전지/소재", "qty": 300, "avg_price": 31000, "cur_price": 31000, "grade": "A",
+     "roe": "8.4%", "debt": "110.5%", "opYoY": "+12.0%", "targetDisp": "+15.2%", "per": "22.5", "pbr": "1.6", "supply_score": 68, "supply_stage": "🔍 수급유입", "rsi": 51.0, "volRatio": "98.0%", "disparity20": "99.8%",
+     "why": "폐배터리 리사이클링 설비 증설 효과 및 이산화티타늄 업황 회복 기대감 유효."},
+    {"code": "005930", "name": "삼성전자", "sector": "반도체/IT", "qty": 150, "avg_price": 72000, "cur_price": 72000, "grade": "B",
+     "roe": "9.1%", "debt": "26.3%", "opYoY": "+18.2%", "targetDisp": "+20.0%", "per": "12.8", "pbr": "1.2", "supply_score": 52, "supply_stage": "❌ 중립", "rsi": 46.5, "volRatio": "85.0%", "disparity20": "97.5%",
+     "why": "메모리 가격 회복 지속 중이나 HBM 납품 일정 조율에 따른 기간 조정 흐름."},
+    {"code": "000660", "name": "SK하이닉스", "sector": "반도체/HBM", "qty": 80, "avg_price": 175000, "cur_price": 175000, "grade": "S",
+     "roe": "21.4%", "debt": "55.8%", "opYoY": "+145.0%", "targetDisp": "+28.0%", "per": "8.5", "pbr": "1.8", "supply_score": 92, "supply_stage": "🚀 매집완료", "rsi": 68.2, "volRatio": "210.0%", "disparity20": "106.8%",
+     "why": "HBM3E 독점적 시장 지위 유지 및 엔터프라이즈 eSSD 수요 폭증에 따른 분기 최대 실적 경신 가시화."}
+]
+
 if "engine" not in st.session_state:
     st.session_state.engine = StockWorldEngine()
     st.session_state.engine.report_data["macro"] = fetch_market_macro()
 
-if "holdings_data" not in st.session_state:
-    st.session_state.holdings_data = [
-        {"code": "060720", "name": "RFHIC", "sector": "방산/통신", "qty": 450, "avg_price": 28500, "cur_price": 28500, "grade": "S",
-         "roe": "14.2%", "debt": "42.1%", "opYoY": "+38.4%", "targetDisp": "+24.5%", "per": "18.2", "pbr": "1.3", "supply_score": 85, "supply_stage": "🚀 매집완료", "rsi": 62.4, "volRatio": "185.0%", "disparity20": "104.2%",
-         "why": "방산 GaN 전력증폭기 글로벌 수주 확대 및 5G 어드밴스드 투자 사이클 진입에 따른 실적 턴어라운드 본격화."},
-        {"code": "001440", "name": "대한전선", "sector": "전력인프라", "qty": 1200, "avg_price": 14200, "cur_price": 14200, "grade": "A",
-         "roe": "11.5%", "debt": "88.2%", "opYoY": "+25.1%", "targetDisp": "+18.0%", "per": "14.1", "pbr": "1.1", "supply_score": 75, "supply_stage": "⏳ 집중매집", "rsi": 58.1, "volRatio": "142.0%", "disparity20": "102.5%",
-         "why": "북미 노후 송전망 교체 및 해저케이블 1공장 가동에 따른 수주 잔고 최고치 경신 모멘텀 지속."},
-        {"code": "005420", "name": "코스모화학", "sector": "2차전지/소재", "qty": 300, "avg_price": 31000, "cur_price": 31000, "grade": "A",
-         "roe": "8.4%", "debt": "110.5%", "opYoY": "+12.0%", "targetDisp": "+15.2%", "per": "22.5", "pbr": "1.6", "supply_score": 68, "supply_stage": "🔍 수급유입", "rsi": 51.0, "volRatio": "98.0%", "disparity20": "99.8%",
-         "why": "폐배터리 리사이클링 설비 증설 효과 및 이산화티타늄 업황 회복 기대감 유효."},
-        {"code": "005930", "name": "삼성전자", "sector": "반도체/IT", "qty": 150, "avg_price": 72000, "cur_price": 72000, "grade": "B",
-         "roe": "9.1%", "debt": "26.3%", "opYoY": "+18.2%", "targetDisp": "+20.0%", "per": "12.8", "pbr": "1.2", "supply_score": 52, "supply_stage": "❌ 중립", "rsi": 46.5, "volRatio": "85.0%", "disparity20": "97.5%",
-         "why": "메모리 가격 회복 지속 중이나 HBM 납품 일정 조율에 따른 기간 조정 흐름."},
-        {"code": "000660", "name": "SK하이닉스", "sector": "반도체/HBM", "qty": 80, "avg_price": 175000, "cur_price": 175000, "grade": "S",
-         "roe": "21.4%", "debt": "55.8%", "opYoY": "+145.0%", "targetDisp": "+28.0%", "per": "8.5", "pbr": "1.8", "supply_score": 92, "supply_stage": "🚀 매집완료", "rsi": 68.2, "volRatio": "210.0%", "disparity20": "106.8%",
-         "why": "HBM3E 독점적 시장 지위 유지 및 엔터프라이즈 eSSD 수요 폭증에 따른 분기 최대 실적 경신 가시화."}
-    ]
+# 구버전 세션 캐시 방어: sector 키가 누락된 데이터가 있으면 기본값으로 재동기화
+if "holdings_data" not in st.session_state or not st.session_state.holdings_data or "sector" not in st.session_state.holdings_data[0]:
+    st.session_state.holdings_data = DEFAULT_HOLDINGS
 
 if "selected_code" not in st.session_state:
     st.session_state.selected_code = "060720"
@@ -145,15 +148,16 @@ if "selected_code" not in st.session_state:
 # ---------------------------------------------------------
 @st.dialog("🔍 종목 심층 분석 (v4.2 모달 복원)")
 def show_deep_analysis_dialog(stock):
+    sec = stock.get('sector', '핵심성장주')
     st.markdown(f"""
     <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #E2E8F0; padding-bottom:8px; margin-bottom:10px;">
         <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:1.2rem; font-weight:800;">{stock['name']}</span>
-            <span style="font-size:0.8rem; color:#64748B; font-weight:700;">{stock['code']}</span>
-            <span class="badge-s" style="background:#EEF2FF; color:#1E3A8A; border:1px solid #C7D2FE;">{stock['sector']}</span>
-            <span style="font-size:0.85rem; font-weight:800; background:#F1F5F9; padding:2px 8px; border-radius:5px;">현재가: {stock['cur_price']:,}원</span>
+            <span style="font-size:1.2rem; font-weight:800;">{stock.get('name', '')}</span>
+            <span style="font-size:0.8rem; color:#64748B; font-weight:700;">{stock.get('code', '')}</span>
+            <span class="badge-s" style="background:#EEF2FF; color:#1E3A8A; border:1px solid #C7D2FE;">{sec}</span>
+            <span style="font-size:0.85rem; font-weight:800; background:#F1F5F9; padding:2px 8px; border-radius:5px;">현재가: {stock.get('cur_price', stock.get('avg_price', 0)):,}원</span>
         </div>
-        <span class="badge-s">등급: {stock['grade']}</span>
+        <span class="badge-s">등급: {stock.get('grade', 'A')}</span>
     </div>
 
     <!-- DART 리스크 배너 -->
@@ -263,60 +267,65 @@ if st.button("🚀 4대 전문 에이전트 종합 파이프라인 가동 (시�
     st.rerun()
 
 # ---------------------------------------------------------
-# 6. 오늘의 관심 추천 Top 3 캐러셀
+# 6. 오늘의 관심 추천 Top 3 캐러셀 (안전 참조 처리)
 # ---------------------------------------------------------
 st.markdown("<div style='font-size:1.05rem; font-weight:800; color:#0F172A; margin: 10px 0 8px 0; border-bottom: 2px solid #1E3A8A; width:fit-content; padding-bottom:3px;'>오늘의 관심 추천 Top 3</div>", unsafe_allow_html=True)
 
-t_stocks = [s for s in st.session_state.holdings_data if s['grade'] in ['S', 'A']][:3]
+valid_stocks = [s for s in st.session_state.holdings_data if s.get('grade') in ['S', 'A']]
+if len(valid_stocks) < 3:
+    valid_stocks = st.session_state.holdings_data[:3]
+
+t1, t2, t3 = valid_stocks[0], valid_stocks[1], valid_stocks[2]
+
 st.markdown(f"""
 <div class="rec-carousel-container">
     <div class="rec-carousel-card">
         <div class="rec-head">
             <div style="display:flex; align-items:center; gap:6px;">
                 <span class="rec-rank-badge">1</span>
-                <span class="rec-name">{t_stocks[0]['name']}</span>
-                <span class="rec-code">{t_stocks[0]['sector']}</span>
+                <span class="rec-name">{t1.get('name', '')}</span>
+                <span class="rec-code">{t1.get('sector', '핵심성장주')}</span>
             </div>
-            <span class="badge-s">{t_stocks[0]['grade']}</span>
+            <span class="badge-s">{t1.get('grade', 'S')}</span>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; text-align:center; background:#FFF; padding:6px; border-radius:6px; border:1px solid #E2E8F0;">
-            <div><div style="font-size:0.62rem; color:#64748B;">현재가</div><div style="font-size:0.78rem; font-weight:800;">{t_stocks[0]['cur_price']:,}원</div></div>
-            <div><div style="font-size:0.62rem; color:#64748B;">매집강도</div><div style="font-size:0.78rem; font-weight:800; color:#15803D;">{t_stocks[0].get('supply_score', 80)}점</div></div>
-            <div><div style="font-size:0.62rem; color:#64748B;">수급단계</div><div style="font-size:0.72rem; font-weight:800;">{t_stocks[0].get('supply_stage', '매집완료')}</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">현재가</div><div style="font-size:0.78rem; font-weight:800;">{t1.get('cur_price', t1.get('avg_price', 0)):,}원</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">매집강도</div><div style="font-size:0.78rem; font-weight:800; color:#15803D;">{t1.get('supply_score', 80)}점</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">수급단계</div><div style="font-size:0.72rem; font-weight:800;">{t1.get('supply_stage', '매집완료')}</div></div>
         </div>
-        <div class="rec-headline-box">💡 {t_stocks[0].get('why', '')}</div>
+        <div class="rec-headline-box">💡 {t1.get('why', '')}</div>
     </div>
     <div class="rec-carousel-card">
         <div class="rec-head">
             <div style="display:flex; align-items:center; gap:6px;">
                 <span class="rec-rank-badge">2</span>
-                <span class="rec-name">{t_stocks[1]['name']}</span>
-                <span class="rec-code">{t_stocks[1]['sector']}</span>
+                <span class="rec-name">{t2.get('name', '')}</span>
+                <span class="rec-code">{t2.get('sector', '핵심성장주')}</span>
             </div>
-            <span class="badge-a">{t_stocks[1]['grade']}</span>
+            <span class="badge-a">{t2.get('grade', 'A')}</span>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; text-align:center; background:#FFF; padding:6px; border-radius:6px; border:1px solid #E2E8F0;">
-            <div><div style="font-size:0.62rem; color:#64748B;">현재가</div><div style="font-size:0.78rem; font-weight:800;">{t_stocks[1]['cur_price']:,}원</div></div>
-            <div><div style="font-size:0.62rem; color:#64748B;">매집강도</div><div style="font-size:0.78rem; font-weight:800; color:#15803D;">{t_stocks[1].get('supply_score', 75)}점</div></div>
-            <div><div style="font-size:0.62rem; color:#64748B;">수급단계</div><div style="font-size:0.72rem; font-weight:800;">{t_stocks[1].get('supply_stage', '집중매집')}</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">현재가</div><div style="font-size:0.78rem; font-weight:800;">{t2.get('cur_price', t2.get('avg_price', 0)):,}원</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">매집강도</div><div style="font-size:0.78rem; font-weight:800; color:#15803D;">{t2.get('supply_score', 75)}점</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">수급단계</div><div style="font-size:0.72rem; font-weight:800;">{t2.get('supply_stage', '집중매집')}</div></div>
         </div>
-        <div class="rec-headline-box">💡 {t_stocks[1].get('why', '')}</div>
+        <div class="rec-headline-box">💡 {t2.get('why', '')}</div>
     </div>
     <div class="rec-carousel-card">
         <div class="rec-head">
             <div style="display:flex; align-items:center; gap:6px;">
                 <span class="rec-rank-badge">3</span>
-                <span class="rec-name">{t_stocks[2]['name']}</span>
-                <span class="rec-code">{t_stocks[2]['sector']}</span>
+                <span class="rec-name">{t3.get('name', '')}</span>
+                <span class="rec-code">{t3.get('sector', '핵심성장주')}</span>
             </div>
-            <span class="badge-s">{t_stocks[2]['grade']}</span>
+            <span class="badge-s">{t3.get('grade', 'S')}</span>
         </div>
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:4px; text-align:center; background:#FFF; padding:6px; border-radius:6px; border:1px solid #E2E8F0;">
-            <div><div style="font-size:0.62rem; color:#64748B;">현재가</div><div style="font-size:0.78rem; font-weight:800;">{t_stocks[2]['cur_price']:,}원</div></div>
-            <div><div style="font-size:0.62rem; color:#64748B;">매집강도</div><div style="font-size:0.78rem; font-weight:800; color:#15803D;">{t_stocks[2].get('supply_score', 90)}점</div></div>
-            <div><div style="font-size:0.62rem; color:#64748B;">수급단계</div><div style="font-size:0.72rem; font-weight:800;">{t_stocks[2].get('supply_stage', '매집완료')}</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">현재가</div><div style="font-size:0.78rem; font-weight:800;">{t3.get('cur_price', t3.get('avg_price', 0)):,}원</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">매집강도</div><div style="font-size:0.78rem; font-weight:800; color:#15803D;">{t3.get('supply_score', 90)}점</div></div>
+            <div><div style="font-size:0.62rem; color:#64748B;">수급단계</div><div style="font-size:0.72rem; font-weight:800;">{t3.get('supply_stage', '매집완료')}</div></div>
         </div>
-        <div class="rec-headline-box">💡 {t_stocks[2].get('why', '')}</div>
+        <div class="rec-headline-box">💡 {t3.get('why', '')}</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
@@ -342,8 +351,8 @@ with left_col:
             <div style="display:flex; align-items:center; gap:6px; min-width:0;">
                 <span style="font-size:0.7rem; font-weight:800; color:#64748B;">{idx+1}</span>
                 <div>
-                    <div style="font-size:0.82rem; font-weight:800; color:#000;">{item['name']}</div>
-                    <div style="font-size:0.65rem; color:#64748B;">{item['sector']}</div>
+                    <div style="font-size:0.82rem; font-weight:800; color:#000;">{item.get('name', '')}</div>
+                    <div style="font-size:0.65rem; color:#64748B;">{item.get('sector', '핵심성장주')}</div>
                 </div>
             </div>
             <div style="text-align:right;">
@@ -408,9 +417,9 @@ with right_col:
     with det_col1:
         st.markdown(f"""
         <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:1.3rem; font-weight:800; color:#000;">{target['name']}</span>
-            <span style="font-size:0.85rem; color:#64748B; font-weight:700;">{target['code']}</span>
-            <span class="badge-s" style="background:#EEF2FF; color:#1E3A8A; border:1px solid #C7D2FE;">{target['sector']}</span>
+            <span style="font-size:1.3rem; font-weight:800; color:#000;">{target.get('name', '')}</span>
+            <span style="font-size:0.85rem; color:#64748B; font-weight:700;">{target.get('code', '')}</span>
+            <span class="badge-s" style="background:#EEF2FF; color:#1E3A8A; border:1px solid #C7D2FE;">{target.get('sector', '핵심성장주')}</span>
         </div>
         """, unsafe_allow_html=True)
     with det_col2:
