@@ -3,7 +3,7 @@ import plotly.graph_objects as go
 from engine import StockWorldEngine, run_full_pipeline, fetch_market_macro
 
 # ---------------------------------------------------------
-# 1. 페이지 설정 및 모바일 최적화 CSS
+# 1. 페이지 설정 및 모바일 반응형 커스텀 CSS
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="AI 스마트 주식 자산관리",
@@ -14,26 +14,69 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    /* 여백 최적화 및 가로 스크롤 방지 */
-    .block-container { padding-top: 1.2rem; padding-bottom: 2rem; max-width: 100% !important; }
+    /* 여백 최적화 */
+    .block-container { padding: 1rem 1rem 2rem 1rem !important; max-width: 100% !important; }
     
-    /* 상단 헤더 반응형 */
-    .header-box { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
-    .header-title { font-size: 20px; font-weight: 800; color: #0F172A; margin: 0; }
+    /* 상단 헤더 글자 눌림 방지 */
+    .header-wrap {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #0F172A;
+        padding: 12px 18px;
+        border-radius: 12px;
+        margin-bottom: 14px;
+        color: white;
+    }
+    .header-title { font-size: 18px; font-weight: 800; margin: 0; line-height: 1.4; }
     
-    /* KPI 총괄 카드 */
-    .kpi-container { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .kpi-title { font-size: 11px; color: #64748B; font-weight: 700; text-transform: uppercase; margin-bottom: 4px; }
-    .kpi-value { font-size: 20px; font-weight: 900; color: #0F172A; }
-    .kpi-sub { font-size: 11px; margin-top: 4px; font-weight: 600; }
+    /* Metric 숫자 말줄임 방지 */
+    div[data-testid="stMetricValue"] > div {
+        font-size: 19px !important;
+        font-weight: 800 !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+    }
+    div[data-testid="stMetricLabel"] { font-size: 12px !important; font-weight: 600 !important; }
     
-    /* 텍스트 컬러 */
+    /* Top 3 추천 카드 */
+    .top3-container {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .top3-card {
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-left: 4px solid #1E3A8A;
+        border-radius: 8px;
+        padding: 10px 12px;
+    }
+    .top3-title { font-size: 13px; font-weight: 800; color: #0F172A; display: flex; justify-content: space-between; align-items: center; }
+    .top3-reason { font-size: 11px; color: #475569; margin-top: 4px; line-height: 1.3; }
+
+    /* 좌측 종목 리스트 카드 */
+    .stock-card {
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin-bottom: 8px;
+        transition: all 0.15s ease;
+    }
+    .stock-card-active {
+        background: #EFF6FF !important;
+        border: 1.5px solid #2563EB !important;
+        box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
+    }
+    
+    /* 뱃지 및 색상 */
     .val-up { color: #DC2626 !important; font-weight: 800; }
     .val-down { color: #2563EB !important; font-weight: 800; }
-    .val-sub { color: #64748B; }
-    
-    .badge-s { background: #1E3A8A; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
-    .badge-a { background: #047857; color: white; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 700; }
+    .badge-s { background: #1E3A8A; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+    .badge-a { background: #047857; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+    .badge-b { background: #475569; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -42,7 +85,6 @@ st.markdown("""
 # ---------------------------------------------------------
 if "engine" not in st.session_state:
     st.session_state.engine = StockWorldEngine()
-    # 초기 진입 시에도 4대 매크로 지수를 즉시 수집해 표출
     st.session_state.engine.report_data["macro"] = fetch_market_macro()
 
 if "holdings_data" not in st.session_state:
@@ -57,18 +99,31 @@ if "holdings_data" not in st.session_state:
 if "selected_code" not in st.session_state:
     st.session_state.selected_code = "060720"
 
+# 기본 Top 3 추천 데이터 풀
+if "top3_data" not in st.session_state:
+    st.session_state.top3_data = [
+        {"name": "RFHIC", "code": "060720", "grade": "S", "reason": "방산 GaN 전력증폭기 수주 및 5G 어드밴스드 모멘텀"},
+        {"name": "대한전선", "code": "001440", "grade": "A", "reason": "북미 초고압 전력망 인프라 교체 주기 수혜"},
+        {"name": "SK하이닉스", "code": "000660", "grade": "S", "reason": "HBM3E 독점 공급 우위 및 AI 메모리 실적 턴어라운드"}
+    ]
+
 # ---------------------------------------------------------
-# 3. 상단 헤더 & 에이전트 실행 바
+# 3. 상단 헤더 & 원클릭 파이프라인 트리거
 # ---------------------------------------------------------
-head_col1, head_col2 = st.columns([3, 1])
-with head_col1:
-    st.markdown("<h2 style='margin:0; font-size:22px; font-weight:800;'>📊 AI 스마트 주식 자산관리 & 포트폴리오 월드</h2>", unsafe_allow_html=True)
-with head_col2:
-    if st.button("🚀 4대 에이전트 분석 실행", type="primary", use_container_width=True):
-        with st.spinner("팩트·퀀트·공시 에이전트 병렬 분석 및 가드 검증 중..."):
-            st.session_state.engine = run_full_pipeline(st.session_state.holdings_data, st.session_state.engine)
-            st.session_state.holdings_data = st.session_state.engine.report_data["holdings"]
-        st.rerun()
+st.markdown("""
+<div class="header-wrap">
+    <div>
+        <div class="header-title">📊 AI 스마트 주식 자산관리 & 포트폴리오 월드</div>
+        <div style="font-size: 11px; opacity: 0.8; margin-top: 2px;">4대 전문 에이전트 독립 병렬 분석 및 무결점 가드레일 시스템</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+if st.button("🚀 4대 에이전트 종합 파이프라인 가동 (시황/수급/공시 정밀 분석)", type="primary", use_container_width=True):
+    with st.spinner("팩트·퀀트·공시 에이전트 병렬 분석 및 가드 검증 중..."):
+        st.session_state.engine = run_full_pipeline(st.session_state.holdings_data, st.session_state.engine)
+        st.session_state.holdings_data = st.session_state.engine.report_data["holdings"]
+    st.rerun()
 
 # ---------------------------------------------------------
 # 4. 상단 4대 매크로 지수 상시 표출
@@ -81,7 +136,7 @@ m3.metric("원/달러 환율", f"{macro.get('USDKRW', {}).get('price', 0):,.1f}�
 m4.metric("미 10년 국채금리", f"{macro.get('US10Y', {}).get('price', 0):.2f}%", f"{macro.get('US10Y', {}).get('change', 0):+.2f}%", delta_color="inverse")
 
 # ---------------------------------------------------------
-# 5. [신설] 총자산 포트폴리오 총괄 KPI 패널
+# 5. 총자산 포트폴리오 총괄 KPI 패널
 # ---------------------------------------------------------
 total_buy = sum(item["qty"] * item["avg_price"] for item in st.session_state.holdings_data)
 total_eval = sum(item["qty"] * item.get("cur_price", item["avg_price"]) for item in st.session_state.holdings_data)
@@ -92,15 +147,31 @@ win_count = sum(1 for item in st.session_state.holdings_data if item.get("cur_pr
 loss_count = len(st.session_state.holdings_data) - win_count
 
 kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-kpi1.metric("현재 총 평가금액", f"{total_eval:,.0f}원", f"매입원금: {total_buy:,.0f}원", delta_color="off")
+kpi1.metric("총 평가금액", f"{total_eval:,.0f}원", f"매입: {total_buy:,.0f}원", delta_color="off")
 kpi2.metric("총 평가손익", f"{total_profit:+,.0f}원", f"{total_rate:+.2f}%")
-kpi3.metric("보유 현황", f"총 {len(st.session_state.holdings_data)}개 종목", f"수익 {win_count} / 손실 {loss_count}", delta_color="off")
+kpi3.metric("보유 현황", f"총 {len(st.session_state.holdings_data)}종목", f"수익 {win_count} / 손실 {loss_count}", delta_color="off")
 kpi4.metric("월드 상태 (ESTC)", st.session_state.engine.state.upper(), "무결점 가드 가동 중", delta_color="off")
 
-st.markdown("---")
+# ---------------------------------------------------------
+# 6. [신설] 당일 에이전트 추천 Top 3 유망주 카드
+# ---------------------------------------------------------
+st.markdown("##### 🎯 오늘의 AI 추천 유망주 Top 3")
+t_col1, t_col2, t_col3 = st.columns(3)
+cols = [t_col1, t_col2, t_col3]
+for idx, stock in enumerate(st.session_state.top3_data):
+    with cols[idx]:
+        st.markdown(f"""
+        <div class="top3-card">
+            <div class="top3-title">
+                <span>{stock['name']} <span style="font-size:11px; color:#64748B;">({stock['code']})</span></span>
+                <span class="badge-s">{stock['grade']}</span>
+            </div>
+            <div class="top3-reason">{stock['reason']}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# 6. 브리핑 영역 (생략 없이 유지)
+# 7. 브리핑 영역 & 승인 관문
 # ---------------------------------------------------------
 briefing_text = st.session_state.engine.report_data.get("briefing", "")
 if briefing_text:
@@ -119,26 +190,40 @@ if briefing_text:
         with bc3:
             st.caption("🛡️ World 가드: 수치 정밀 대조 통과 | URL 노출 차단")
 
+st.markdown("---")
+
 # ---------------------------------------------------------
-# 7. 메인 뷰: 좌측 종목 목록 vs 우측 인스펙터
+# 8. 메인 뷰: 좌측 종목 리스트 (MTS 카드형) vs 우측 인스펙터
 # ---------------------------------------------------------
-left_col, right_col = st.columns([1.2, 2.8])
+left_col, right_col = st.columns([1.3, 2.7])
 
 with left_col:
-    st.markdown("##### 📋 보유 종목 리스트")
+    st.markdown("##### 📋 보유 종목 포트폴리오")
     for stock in st.session_state.holdings_data:
         cur_p = stock.get("cur_price", stock["avg_price"])
         profit_rate = ((cur_p - stock["avg_price"]) / stock["avg_price"]) * 100 if stock["avg_price"] > 0 else 0
         rate_class = "val-up" if profit_rate >= 0 else "val-down"
+        is_active = (stock["code"] == st.session_state.selected_code)
+        active_class = "stock-card-active" if is_active else ""
+        badge_style = "badge-s" if stock.get("grade") == "S" else ("badge-a" if stock.get("grade") == "A" else "badge-b")
         
-        c_a, c_b = st.columns([3, 1])
-        with c_a:
-            st.markdown(f"**{stock['name']}** <span class='badge-s'>{stock.get('grade', 'B')}</span>", unsafe_allow_html=True)
-            st.markdown(f"<span class='{rate_class}'>{cur_p:,.0f}원 ({profit_rate:+.2f}%)</span>", unsafe_allow_html=True)
-        with c_b:
-            if st.button("선택", key=f"sel_{stock['code']}", use_container_width=True):
-                st.session_state.selected_code = stock["code"]
-        st.divider()
+        # MTS 스타일 종목 카드 레이아웃
+        st.markdown(f"""
+        <div class="stock-card {active_class}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:800; font-size:14px; color:#0F172A;">{stock['name']} <span class="{badge_style}">{stock.get('grade', 'B')}</span></span>
+                <span class="{rate_class}" style="font-size:13px;">{profit_rate:+.2f}%</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                <span style="font-size:11px; color:#64748B;">{stock['qty']:,}주 (평단 {stock['avg_price']:,}원)</span>
+                <span style="font-size:13px; font-weight:800; color:#0F172A;">{cur_p:,.0f}원</span>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.button(f"{stock['name']} 선택", key=f"btn_{stock['code']}", use_container_width=True):
+            st.session_state.selected_code = stock["code"]
+            st.rerun()
 
 with right_col:
     target = next((item for item in st.session_state.holdings_data if item["code"] == st.session_state.selected_code), st.session_state.holdings_data[0])
@@ -146,13 +231,13 @@ with right_col:
     t_profit_rate = ((t_cur - target["avg_price"]) / target["avg_price"]) * 100
     t_profit_val = (t_cur - target["avg_price"]) * target["qty"]
     
-    st.markdown(f"#### 🎯 {target['name']} ({target['code']}) 상세 진단")
+    st.markdown(f"#### 🎯 {target['name']} ({target['code']}) 정밀 진단")
     
     i1, i2, i3, i4 = st.columns(4)
     i1.metric("현재가", f"{t_cur:,.0f}원", f"{t_profit_rate:+.2f}%")
     i2.metric("총 평가손익", f"{t_profit_val:+,.0f}원", f"{t_profit_rate:+.2f}%")
     i3.metric("매집 강도", f"{target.get('supply_score', 50)}점", target.get('supply_stage', '수급유입'))
-    i4.metric("보유 수량", f"{target['qty']:,}주", f"평단: {target['avg_price']:,}원")
+    i4.metric("보유 수량", f"{target['qty']:,}주", f"평단 {target['avg_price']:,}원")
     
     # 캔들스틱 차트
     st.markdown("##### 📈 캔들스틱 & 주가 추세")
