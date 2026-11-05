@@ -1,88 +1,82 @@
 version: "superwork.world/v1"
 world:
-  name: "Stock Intelligence & Portfolio Orchestrator"
-  mission: "4대 독립 전문 에이전트의 병렬 분석과 엄격한 교차 검증 가드를 통해 결측·왜곡 없는 무결점 포트폴리오 상태를 웹앱에 동기화한다."
+  name: "AI Smart Stock Asset Management & Portfolio Orchestrator"
+  mission: "실시간 검색 선행 수집 가드와 3각 팩트 대조를 통해 6대 포지션 액션과 무결점 원장 데이터를 사용자 온디맨드로 동기화한다."
 
 entities:
   ComprehensiveDailyReport:
     owned_state: true
     attributes:
       session_id: string
-      session_date: string
-      session_mode: string         # "morning" | "close"
-      fact_status: string          # "pending" | "completed" | "failed"
-      quant_status: string         # "pending" | "completed" | "failed"
-      audit_status: string         # "pending" | "completed" | "failed"
-      macro_data_sane: string      # "yes" | "no"
-      text_data_aligned: string    # "yes" | "no"
-      contains_raw_url: string     # "yes" | "no"
+      session_timestamp: string
+      trigger_source: string         # "on_demand_user"
+      fact_status: string            # "pending" | "completed" | "failed"
+      quant_status: string           # "pending" | "completed" | "failed"
+      audit_status: string           # "pending" | "completed" | "failed"
+      macro_data_sane: string        # "yes" | "no"
+      text_data_aligned: string      # "yes" | "no"
+      contains_raw_url: string       # "yes" | "no"
+      grade_classification: string   # "6_tier_action_matrix"
 
 roles:
-  - FactResearcher        # 실시간 시세, 거래량, 4대 매크로 지표 수집
-  - QuantAnalyst          # 20일선 이격도, RSI, 매집강도 점수 산출
-  - CorporateAuditor      # DART 공시, 기업 운영 및 재무 건전성 감사
-  - ChiefStrategist       # 시장 브리핑 작성, Top 3 선정, 종합 등급 판정
-  - IntegrityInspector    # 기사-수치 교차 검증 및 이상치 기계적 감사
-  - RuntimeCommitter      # 최종 레포트 승인 및 상태 확정 커미터
+  - MarketFactSearcher      # 실시간 검색 도구 호출하여 당일 국내/해외 매크로 및 수급 수집
+  - QuantEngine             # Fchart 기반 캔들, 이평선, RSI, 20일선 이격도 정밀 연산
+  - AuditInspector          # DART 공시 및 재무 건전성(ROE, 부채비율) 감사
+  - StrategyOrchestrator    # 3각 팩트 대조, 6대 액션 도출, 리스크 비교, 불릿 요약 생성
+  - RuntimeCommitter        # 사용자 승인(Human-in-the-Loop) 시 원장 확정 및 로컬 저장
 
 states:
-  - drafted                # 초기 기동 상태
-  - analyzing              # 3대 에이전트 독립 병렬 분석 중
-  - ready_for_synthesis    # 3대 분석 데이터가 모두 정상 도착한 합류 상태
-  - synthesized            # 종합 전략 및 브리핑 합성 완료
-  - verified               # 수치-기사 일치 및 매크로 검증 완료
-  - under_review           # 사용자 검토 및 최종 승인 대기 상태
-  - committed              # [Terminal] 최종 승인 및 리포트 확정 완료
-  - requires_recheck       # [Failure Gate] 비정상 데이터 감지 시 격리 상태
+  - idle                    # 상시 무비용 대기 상태 (Zero-cost static inspection)
+  - trigger_requested       # 사용자 [AI 종합 분석 개시] 온디맨드 요청 수신
+  - fact_retrieved          # 실시간 매크로/수급 팩트 선행 수집 완료 상태
+  - analyzed                # 퀀트 기술지표 및 재무 건전성 감사 완료 상태
+  - under_review            # 3각 팩트 대조 및 6대 액션/불릿 합성 완료, 사용자 검토 대기
+  - committed               # [Terminal] 사용자 승인 및 로컬 원장(holdings.json) 동기화 완료
+  - requires_recheck        # [Failure Gate] 비정상 URL 또는 데이터 불일치 감지 격리
 
 transitions:
-  start_analysis:
-    from: drafted
-    to: analyzing
-    roles: [FactResearcher]
+  request_trigger:
+    from: idle
+    to: trigger_requested
+    roles: [RuntimeCommitter]
 
-  submit_parallel_results:
-    from: analyzing
-    to: ready_for_synthesis
-    roles: [FactResearcher, QuantAnalyst, CorporateAuditor]
+  fetch_market_facts:
+    from: trigger_requested
+    to: fact_retrieved
+    roles: [MarketFactSearcher]
+    guards:
+      - record.trigger_source == "on_demand_user"
+
+  execute_quant_and_audit:
+    from: fact_retrieved
+    to: analyzed
+    roles: [QuantEngine, AuditInspector]
     guards:
       - record.fact_status == "completed"
+
+  synthesize_and_orchestrate:
+    from: analyzed
+    to: under_review
+    roles: [StrategyOrchestrator]
+    guards:
       - record.quant_status == "completed"
       - record.audit_status == "completed"
-
-  synthesize_strategy:
-    from: ready_for_synthesis
-    to: synthesized
-    roles: [ChiefStrategist]
-    guards:
       - record.contains_raw_url == "no"
-
-  verify_integrity:
-    from: synthesized
-    to: verified
-    roles: [IntegrityInspector]
-    guards:
       - record.macro_data_sane == "yes"
-      - record.text_data_aligned == "yes"
 
   flag_discrepancy:
-    from: synthesized
+    from: analyzed
     to: requires_recheck
-    roles: [IntegrityInspector]
+    roles: [StrategyOrchestrator]
     guards:
-      - record.text_data_aligned == "no"
+      - record.contains_raw_url == "yes"
 
-  submit_for_review:
-    from: verified
-    to: under_review
-    roles: [IntegrityInspector]
-
-  approve_report:
+  commit_report:
     from: under_review
     to: committed
     roles: [RuntimeCommitter]
 
-  request_rework:
-    from: under_review
-    to: drafting
+  reset_session:
+    from: [committed, requires_recheck]
+    to: idle
     roles: [RuntimeCommitter]
